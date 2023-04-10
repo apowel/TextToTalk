@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using TextToTalk.Lexicons;
 
 namespace TextToTalk.Backends.ElevenLabs;
@@ -10,7 +11,6 @@ public class ElevenLabsBackendUIModel
     private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
 
     private readonly PluginConfiguration config;
-    private readonly LexiconManager lexiconManager;
 
     private List<string> voices;
     private ElevenLabsLoginInfo loginInfo;
@@ -33,14 +33,12 @@ public class ElevenLabsBackendUIModel
     public ElevenLabsBackendUIModel(PluginConfiguration config, LexiconManager lexiconManager)
     {
         this.config = config;
-        this.lexiconManager = lexiconManager;
         this.voices = new List<string>();
 
         this.loginInfo = new ElevenLabsLoginInfo();
         var credentials = ElevenLabsCredentialManager.LoadCredentials();
         if (credentials != null)
         {
-            this.loginInfo.Region = credentials.UserName;
             this.loginInfo.SubscriptionKey = credentials.Password;
 
             TryElevenLabsLogin();
@@ -57,18 +55,16 @@ public class ElevenLabsBackendUIModel
     /// <summary>
     /// Logs in with the provided credentials.
     /// </summary>
-    /// <param name="region">The client's region.</param>
     /// <param name="subscriptionKey">The client's subscription key.</param>
-    public void LoginWith(string region, string subscriptionKey)
+    public void LoginWith(string subscriptionKey)
     {
-        var username = Whitespace.Replace(region, "");
         var password = Whitespace.Replace(subscriptionKey, "");
-        this.loginInfo = new ElevenLabsLoginInfo { Region = username, SubscriptionKey = password };
+        this.loginInfo = new ElevenLabsLoginInfo {SubscriptionKey = password };
 
         if (TryElevenLabsLogin())
         {
             // Only save the user's new credentials if the login succeeded
-            ElevenLabsCredentialManager.SaveCredentials(username, password);
+            ElevenLabsCredentialManager.SaveCredentials("", password);
         }
     }
     
@@ -95,8 +91,8 @@ public class ElevenLabsBackendUIModel
         ElevenLabs?.Dispose();
         try
         {
-            DetailedLog.Info($"Logging into ElevenLabs region {this.loginInfo.Region}");
-            ElevenLabs = new ElevenLabsHttpClient(this.loginInfo.SubscriptionKey, this.loginInfo.Region, this.lexiconManager);
+            DetailedLog.Info($"Logging into ElevenLabs");
+            ElevenLabs = new ElevenLabsHttpClient(this.loginInfo.SubscriptionKey);
             // This should throw an exception if the login failed
             this.voices = ElevenLabs.GetVoices();
             return true;

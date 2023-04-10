@@ -33,27 +33,13 @@ public class ElevenLabsBackendUI
 
     public void DrawSettings(IConfigUIDelegates helpers)
     {
-        var (region, subscriptionKey) = this.model.GetLoginInfo();
-        ImGui.InputTextWithHint($"##{MemoizedId.Create()}", "Region", ref region, 100);
+        var subscriptionKey = this.model.GetLoginInfo().SubscriptionKey;
         ImGui.InputTextWithHint($"##{MemoizedId.Create()}", "Subscription key", ref subscriptionKey, 100,
             ImGuiInputTextFlags.Password);
 
-        if (ImGui.Button($"Save and Login##{MemoizedId.Create()}"))
+        if (ImGui.Button($"Save##{MemoizedId.Create()}"))
         {
-            this.model.LoginWith(region, subscriptionKey);
-        }
-
-        var loginError = this.model.ElevenLabsLoginException?.Message;
-        if (loginError != null)
-        {
-            ImGui.TextColored(BackendUI.Red, $"Failed to login: {loginError}");
-        }
-
-        ImGui.SameLine();
-        if (ImGui.Button($"Register##{MemoizedId.Create()}"))
-        {
-            WebBrowser.Open(
-                "https://learn.microsoft.com/en-us/ElevenLabs/cognitive-services/speech-service/index-text-to-speech");
+            this.model.LoginWith(subscriptionKey);
         }
 
         ImGui.TextColored(BackendUI.HintColor, "Credentials secured with Windows Credential Manager");

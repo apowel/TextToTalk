@@ -5,7 +5,7 @@ namespace TextToTalk.Backends.ElevenLabs;
 
 public class ElevenLabsCredentialManager
 {
-    private const string CredentialsTarget = "TextToTalk_AccessKeys_ElevenLabsCognitiveServices";
+    private const string CredentialsTarget = "TextToTalk_AccessKeys_ElevenLabs";
 
     public static NetworkCredential? LoadCredentials()
     {

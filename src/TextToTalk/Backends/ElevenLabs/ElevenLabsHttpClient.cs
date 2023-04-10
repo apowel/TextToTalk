@@ -20,7 +20,7 @@ public class ElevenLabsHttpClient : IDisposable
     private readonly ElevenLabsClient _labClient;
     private readonly StreamSoundQueue _soundQueue;
 
-    public ElevenLabsHttpClient(string subscriptionKey, string region)
+    public ElevenLabsHttpClient(string subscriptionKey)
     {
         _labClient = new ElevenLabsClient(new ElevenLabsAuthentication(subscriptionKey));
         _client = new HttpClient();
@@ -34,14 +34,15 @@ public class ElevenLabsHttpClient : IDisposable
         return this._soundQueue.GetCurrentlySpokenTextSource();
     }
 
-    public async Task<List<string>> GetVoices()
+    public List<string> GetVoices()
     {
-        var res = await _labClient.VoicesEndpoint.GetAllVoicesAsync();
-        return res.Select(voice => voice.Name).ToList();
+        var res = _labClient.VoicesEndpoint.GetAllVoicesAsync().GetAwaiter().GetResult();
+        return res.Select(voice => voice.Id).ToList();
     }
-    public async Task Say(string voiceId, string text, TextSource source, float volume, int stability = 0, int similarityBoost = 0)
+    public async Task Say(VoicePreset voice, string text, TextSource source, float volume, int stability = 0, int similarityBoost = 0)
     {
-        var requestUrl = $"{BaseUrl}/text-to-speech/{voiceId}/stream";
+        
+        var requestUrl = $"{BaseUrl}/text-to-speech/{voice.Id}/stream";
         var requestBody = new
         {
             text,

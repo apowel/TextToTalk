@@ -22,9 +22,9 @@ public class ElevenLabsBackend : VoiceBackend
         this.ui = new ElevenLabsBackendUI(this.uiModel, config, lexiconManager, http);
     }
 
-    public override void Say(TextSource source, Voice voice, string speaker, string text)
+    public override void Say(TextSource source, VoicePreset voice, string speaker, string text)
     {
-        if (preset is not ElevenLabsVoicePreset ElevenLabsVoicePreset)
+        if (voice is not ElevenLabsVoicePreset elevenLabsVoicePreset)
         {
             throw new InvalidOperationException("Invalid voice preset provided.");
         }
@@ -35,8 +35,7 @@ public class ElevenLabsBackend : VoiceBackend
             return;
         }
 
-        _ = this.uiModel.ElevenLabs.Say(voice,
-            ElevenLabsVoicePreset.PlaybackRate, ElevenLabsVoicePreset.Volume, source, text);
+        _ = this.uiModel.ElevenLabs.Say(voice, text, source, elevenLabsVoicePreset.Volume, elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
     }
 
     public override void CancelAllSpeech()
