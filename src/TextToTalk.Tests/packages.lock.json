@@ -58,6 +58,11 @@
         "resolved": "2.1.11",
         "contentHash": "9qlAWoRRTiL/geAvuwR/g6Bcbrd/bJJgVnB/RurBiyKs6srsP0bvpoo8IK+Eg8EA6jWeM6/YJWs66w4FIAzqPw=="
       },
+      "ElevenLabs-DotNet": {
+        "type": "Transitive",
+        "resolved": "1.1.1",
+        "contentHash": "6nZRlp6cJ4AktyByDWqZ1MbDfWmTxqqpPTer1pfMsKF7jK3/dYa03C1NYAXuj+5lANuCTd6RnGsEDoHhJKI0Sg=="
+      },
       "Microsoft.CodeCoverage": {
         "type": "Transitive",
         "resolved": "17.5.0",
@@ -1166,6 +1171,7 @@
           "AWSSDK.Polly": "[3.7.106.22, )",
           "AdysTech.CredentialManager": "[2.6.0, )",
           "DalamudPackager": "[2.1.11, )",
+          "ElevenLabs-DotNet": "[1.1.1, )",
           "Microsoft.CognitiveServices.Speech": "[1.26.0, )",
           "NAudio": "[2.1.0, )",
           "Standart.Hash.xxHash": "[4.0.5, )",

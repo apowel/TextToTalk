@@ -21,6 +21,7 @@ using Dalamud.Interface.Windowing;
 using Standart.Hash.xxHash;
 using TextToTalk.Backends;
 using TextToTalk.Backends.Azure;
+using TextToTalk.Backends.ElevenLabs;
 using TextToTalk.Backends.Polly;
 using TextToTalk.Backends.System;
 using TextToTalk.Backends.Uberduck;
@@ -368,6 +369,7 @@ namespace TextToTalk
                     Name = gender.ToString(),
                 },
                 AzureBackend => GetVoiceForSpeaker<AzureVoicePreset>(name, gender),
+                ElevenLabsBackend => GetVoiceForSpeaker<ElevenLabsVoicePreset>(name, gender),
                 _ => throw new InvalidOperationException("Failed to get voice preset for backend."),
             };
         }

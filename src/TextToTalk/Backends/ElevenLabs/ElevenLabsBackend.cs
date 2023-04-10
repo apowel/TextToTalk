@@ -1,13 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
+using ElevenLabs.Voices;
 using ImGuiNET;
 
 namespace TextToTalk.Backends.ElevenLabs;
 
 public class ElevenLabsBackend : VoiceBackend
 {
-    private readonly ElevenLabsBackendUI _ui;
-    private readonly ElevenLabsBackendUIModel _uiModel;
+    private readonly ElevenLabsBackendUI ui;
+    private readonly ElevenLabsBackendUIModel uiModel;
 
     public ElevenLabsBackend(PluginConfiguration config, HttpClient http)
     {
@@ -16,70 +18,70 @@ public class ElevenLabsBackend : VoiceBackend
         var lexiconManager = new DalamudLexiconManager();
         //LexiconUtils.LoadFromConfigElevenLabs(lexiconManager, config);
 
-        this._uiModel = new ElevenLabsBackendUIModel(config, lexiconManager);
-        this._ui = new ElevenLabsBackendUI(this._uiModel, config, lexiconManager, http);
+        this.uiModel = new ElevenLabsBackendUIModel(config, lexiconManager);
+        this.ui = new ElevenLabsBackendUI(this.uiModel, config, lexiconManager, http);
     }
 
-    public override void Say(TextSource source, VoicePreset preset, string speaker, string text)
+    public override void Say(TextSource source, Voice voice, string speaker, string text)
     {
-        if (preset is not ElevenLabsVoicePreset elevenLabsVoicePreset)
+        if (preset is not ElevenLabsVoicePreset ElevenLabsVoicePreset)
         {
             throw new InvalidOperationException("Invalid voice preset provided.");
         }
 
-        if (this._uiModel.ElevenLabs == null)
+        if (this.uiModel.ElevenLabs == null)
         {
             DetailedLog.Warn("ElevenLabs client has not yet been initialized");
             return;
         }
 
-        _ = this._uiModel.ElevenLabs.Say(elevenLabsVoicePreset.VoiceName,
-            elevenLabsVoicePreset.PlaybackRate, elevenLabsVoicePreset.Volume, source, text);
+        _ = this.uiModel.ElevenLabs.Say(voice,
+            ElevenLabsVoicePreset.PlaybackRate, ElevenLabsVoicePreset.Volume, source, text);
     }
 
     public override void CancelAllSpeech()
     {
-        if (this._uiModel.ElevenLabs == null)
+        if (this.uiModel.ElevenLabs == null)
         {
             DetailedLog.Warn("ElevenLabs client has not yet been initialized");
             return;
         }
 
-        _ = this._uiModel.ElevenLabs.CancelAllSounds();
+        _ = this.uiModel.ElevenLabs.CancelAllSounds();
     }
 
     public override void CancelSay(TextSource source)
     {
-        if (this._uiModel.ElevenLabs == null)
+        if (this.uiModel.ElevenLabs == null)
         {
             DetailedLog.Warn("ElevenLabs client has not yet been initialized");
             return;
         }
 
-        _ = this._uiModel.ElevenLabs.CancelFromSource(source);
+        _ = this.uiModel.ElevenLabs.CancelFromSource(source);
     }
 
     public override void DrawSettings(IConfigUIDelegates helpers)
     {
-        this._ui.DrawSettings(helpers);
+        this.ui.DrawSettings(helpers);
     }
 
     public override TextSource GetCurrentlySpokenTextSource()
     {
-        if (this._uiModel.ElevenLabs == null)
+        if (this.uiModel.ElevenLabs == null)
         {
             DetailedLog.Warn("ElevenLabs client has not yet been initialized");
             return TextSource.None;
         }
 
-        return this._uiModel.ElevenLabs.GetCurrentlySpokenTextSource();
+        return this.uiModel.ElevenLabs.GetCurrentlySpokenTextSource();
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            this._uiModel.ElevenLabs?.Dispose();
+            this.uiModel.ElevenLabs?.Dispose();
         }
     }
 }

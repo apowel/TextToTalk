@@ -18,7 +18,7 @@ public class ElevenLabsBackendUIModel
     /// <summary>
     /// Gets the currently-instantiated ElevenLabs client instance.
     /// </summary>
-    public ElevenLabsClient? ElevenLabs { get; private set; }
+    public ElevenLabsHttpClient? ElevenLabs { get; private set; }
 
     /// <summary>
     /// Gets the exception thrown by the most recent login, or null if the login was successful.
@@ -96,7 +96,7 @@ public class ElevenLabsBackendUIModel
         try
         {
             DetailedLog.Info($"Logging into ElevenLabs region {this.loginInfo.Region}");
-            ElevenLabs = new ElevenLabsClient(this.loginInfo.SubscriptionKey, this.loginInfo.Region, this.lexiconManager);
+            ElevenLabs = new ElevenLabsHttpClient(this.loginInfo.SubscriptionKey, this.loginInfo.Region, this.lexiconManager);
             // This should throw an exception if the login failed
             this.voices = ElevenLabs.GetVoices();
             return true;

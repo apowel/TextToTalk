@@ -37,7 +37,7 @@ namespace TextToTalk.Backends
                 TTSBackend.AmazonPolly => true,
                 TTSBackend.Uberduck => false,
                 TTSBackend.Azure => true,
-                TTSBackend.ElevenLabs => true,
+                TTSBackend.ElevenLabs => false,
                 _ => throw new ArgumentOutOfRangeException(nameof(backend)),
             };
         }
