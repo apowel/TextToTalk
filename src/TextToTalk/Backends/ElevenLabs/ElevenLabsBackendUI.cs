@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
 using TextToTalk.UI;
 
 namespace TextToTalk.Backends.ElevenLabs;
@@ -12,7 +13,7 @@ public class ElevenLabsBackendUI
     private readonly PluginConfiguration config;
     private readonly ElevenLabsHttpClient ElevenLabs;
     private readonly Func<IDictionary<string, IList<ElevenLabsVoice>>> getVoices;
-
+    IDictionary<string, IList<ElevenLabsVoice>> loadedVoices;
     private string apiKey = string.Empty;
     private string apiSecret = string.Empty;
 
@@ -21,8 +22,6 @@ public class ElevenLabsBackendUI
     {
         this.config = config;
         this.ElevenLabs = ElevenLabs;
-        this.getVoices = getVoices;
-
         var credentials = ElevenLabsCredentialManager.LoadCredentials();
         if (credentials != null)
         {
@@ -32,6 +31,8 @@ public class ElevenLabsBackendUI
 
         this.ElevenLabs.ApiKey = this.apiKey;
         this.ElevenLabs.ApiSecret = this.apiSecret;
+        this.getVoices = getVoices;
+        loadedVoices = this.getVoices.Invoke();
     }
 
     private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
@@ -66,7 +67,6 @@ public class ElevenLabsBackendUI
         ImGui.Spacing();
 
         var currentVoicePreset = this.config.GetCurrentVoicePreset<ElevenLabsVoicePreset>();
-
         var presets = this.config.GetVoicePresetsForBackend(TTSBackend.ElevenLabs).ToList();
         presets.Sort((a, b) => a.Id - b.Id);
 
@@ -98,7 +98,11 @@ public class ElevenLabsBackendUI
             currentVoicePreset,
             TTSBackend.ElevenLabs,
             this.config);
-
+        if (string.IsNullOrEmpty(currentVoicePreset.VoiceName))
+        {
+            currentVoicePreset.VoiceName = loadedVoices.SelectMany(e => e.Value).FirstOrDefault().Name;
+            currentVoicePreset.VoiceId = loadedVoices.SelectMany(e => e.Value).FirstOrDefault().VoiceId;
+        }
         var presetName = currentVoicePreset.Name;
         if (ImGui.InputText($"Preset name##{MemoizedId.Create()}", ref presetName, 64))
         {

@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CognitiveServices.Speech;
+using NAudio.Wave;
 using Newtonsoft.Json;
 
 namespace TextToTalk.Backends.ElevenLabs;
@@ -86,7 +87,7 @@ public class ElevenLabsHttpClient : IDisposable
             var audio = new MemoryStream();
             await response.Content.CopyToAsync(audio);
             audio.Position = 0;
-            _soundQueue.EnqueueSound(audio, source, StreamFormat.Wave, volume);
+            _soundQueue.EnqueueSound(audio, source, StreamFormat.Mp3, volume);
             return;
         }
 

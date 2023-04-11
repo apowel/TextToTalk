@@ -16,8 +16,6 @@ public class ElevenLabsVoicePreset : VoicePreset
         Volume = 1.0f;
         Stability = 0.75;
         SimilarityBoost = 0.75;
-        VoiceId = "Lzt91aqyBlu8xGgcxUBR";
-        VoiceName = "Yshtola";
         PlaybackRate = 100;
         EnabledBackend = TTSBackend.ElevenLabs;
         return true;

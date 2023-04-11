@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using ImGuiNET;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace TextToTalk.Backends.ElevenLabs;
@@ -16,6 +20,7 @@ public class ElevenLabsBackend : VoiceBackend
     private readonly ElevenLabsHttpClient? ElevenLabs;
     private string apiKey;
     private string apiSecret;
+    private IDictionary<string,IList<ElevenLabsVoice>> myVoices;
 
     public ElevenLabsBackend(PluginConfiguration config, HttpClient http)
     {
@@ -24,17 +29,26 @@ public class ElevenLabsBackend : VoiceBackend
         this.soundQueue = new StreamSoundQueue();
         this.ElevenLabs = new ElevenLabsHttpClient(this.soundQueue, http);
         LoadCredentials();
-        var voices = this.ElevenLabs.GetVoices().GetAwaiter().GetResult();
+        IDictionary<string, IList<ElevenLabsVoice>> voices =  new Dictionary<string, IList<ElevenLabsVoice>>();
+        if (myVoices == null || myVoices?.Count == 0)
+        {
+            voices = this.ElevenLabs.GetVoices().GetAwaiter().GetResult();
+            this.myVoices = voices;
+        }
         this.ui = new ElevenLabsBackendUI(config, this.ElevenLabs, () => voices);
     }
 
     public override void Say(TextSource source, VoicePreset preset, string speaker, string text)
     {
+        ElevenLabsVoice voice = GetVoiceByName(speaker);
+        
+        
         if (preset is not ElevenLabsVoicePreset elevenLabsVoicePreset)
         {
             throw new InvalidOperationException("Invalid voice preset provided.");
         }
 
+        elevenLabsVoicePreset.VoiceId = voice.VoiceId;
         if (this.ElevenLabs == null)
         {
             DetailedLog.Warn("ElevenLabs client has not yet been initialized");
@@ -45,10 +59,7 @@ public class ElevenLabsBackend : VoiceBackend
         {
             try
             {
-                if (string.IsNullOrEmpty(elevenLabsVoicePreset.VoiceId))
-                {
-                    elevenLabsVoicePreset.VoiceId = "Lzt91aqyBlu8xGgcxUBR";
-                }
+                
                 await this.ElevenLabs.Say(elevenLabsVoicePreset.VoiceId, text, source, elevenLabsVoicePreset.Volume,
                     elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
             }
@@ -66,7 +77,21 @@ public class ElevenLabsBackend : VoiceBackend
             }
         });
     }
+    //miqo'te compatible name getter
+    public ElevenLabsVoice GetVoiceByName(string voiceName)
+    {
+        var regex = new Regex("[^a-zA-Z0-9]+");
 
+        var sanitizedVoiceName = regex.Replace(voiceName, "").ToLowerInvariant();
+    
+        var voice = myVoices.SelectMany(pair => pair.Value)
+            .FirstOrDefault(v => regex.Replace(v.Name, "").ToLowerInvariant() == sanitizedVoiceName);
+        if (voice == null)
+        {
+            voice = myVoices.SelectMany(pair => pair.Value).FirstOrDefault();
+        }
+        return voice;
+    }
     public void LoadCredentials()
     {
         var credentials = ElevenLabsCredentialManager.LoadCredentials();

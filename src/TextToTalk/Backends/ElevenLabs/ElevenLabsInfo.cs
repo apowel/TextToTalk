@@ -2,12 +2,12 @@
 
 public class ElevenLabsLoginInfo
 {
-    public string SubscriptionKey { get; set; } = "";
+    public string ApiKey { get; set; } = "";
     public string Sub { get; set; } = "";
 
-    public void Deconstruct(out string subscriptionKey, out string sub)
+    public void Deconstruct(out string apiKey, out string sub)
     {
-        subscriptionKey = "0d127136f61cff24e20b081f06e74d1a";
+        apiKey = ApiKey;
         sub = Sub;
     }
 }
