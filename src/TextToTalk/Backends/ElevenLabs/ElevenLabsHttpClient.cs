@@ -7,17 +7,14 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using ElevenLabs;
-using ElevenLabs.Voices;
 using Microsoft.CognitiveServices.Speech;
 using Newtonsoft.Json;
-using TextToTalk.Lexicons;
 
 namespace TextToTalk.Backends.ElevenLabs;
 
 public class ElevenLabsHttpClient : IDisposable
 {
-    private readonly HttpClient _client;
+    public HttpClient _client;
     private const string BaseUrl = "https://api.elevenlabs.io/v1/";
     private readonly StreamSoundQueue _soundQueue;
     public string ApiKey { private get; set; }
@@ -26,7 +23,7 @@ public class ElevenLabsHttpClient : IDisposable
     {
         _client = new HttpClient();
         _client.BaseAddress = new Uri("https://api.elevenlabs.io/v1/");
-        _client.DefaultRequestHeaders.Add("xi-api-key", ApiKey);
+        
         _soundQueue = soundQueue;
     }
 
@@ -53,7 +50,8 @@ public class ElevenLabsHttpClient : IDisposable
         if (response.IsSuccessStatusCode)
         {
             var jsonResponse = await response.Content.ReadAsStringAsync();
-            var voices = JsonConvert.DeserializeObject<List<ElevenLabsVoice>>(jsonResponse);
+            var result = JsonConvert.DeserializeObject<ElevenLabsVoices>(jsonResponse);
+            var voices = result.Voices;
             return voices
                 .GroupBy(v => v.Category)
                 .ToImmutableSortedDictionary(
@@ -66,10 +64,10 @@ public class ElevenLabsHttpClient : IDisposable
         }
         throw new Exception($"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");
     }
-    public async Task Say(string voiceId, string text, TextSource source, float volume, int? stability, int? similarityBoost)
+    public async Task Say(string voiceId, string text, TextSource source, float volume, double? stability, double? similarityBoost)
     {
         
-        var requestUrl = $"{BaseUrl}/text-to-speech/{voiceId}/stream";
+        var requestUrl = $"{BaseUrl}text-to-speech/{voiceId}/stream";
         var requestBody = new
         {
             text,
@@ -89,6 +87,7 @@ public class ElevenLabsHttpClient : IDisposable
             await response.Content.CopyToAsync(audio);
             audio.Position = 0;
             _soundQueue.EnqueueSound(audio, source, StreamFormat.Wave, volume);
+            return;
         }
 
         throw new Exception($"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");

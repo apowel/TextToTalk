@@ -14,6 +14,8 @@ public class ElevenLabsBackend : VoiceBackend
     private readonly StreamSoundQueue soundQueue;
     private readonly ElevenLabsBackendUI ui;
     private readonly ElevenLabsHttpClient? ElevenLabs;
+    private string apiKey;
+    private string apiSecret;
 
     public ElevenLabsBackend(PluginConfiguration config, HttpClient http)
     {
@@ -21,7 +23,7 @@ public class ElevenLabsBackend : VoiceBackend
 
         this.soundQueue = new StreamSoundQueue();
         this.ElevenLabs = new ElevenLabsHttpClient(this.soundQueue, http);
-
+        LoadCredentials();
         var voices = this.ElevenLabs.GetVoices().GetAwaiter().GetResult();
         this.ui = new ElevenLabsBackendUI(config, this.ElevenLabs, () => voices);
     }
@@ -43,6 +45,10 @@ public class ElevenLabsBackend : VoiceBackend
         {
             try
             {
+                if (string.IsNullOrEmpty(elevenLabsVoicePreset.VoiceId))
+                {
+                    elevenLabsVoicePreset.VoiceId = "Lzt91aqyBlu8xGgcxUBR";
+                }
                 await this.ElevenLabs.Say(elevenLabsVoicePreset.VoiceId, text, source, elevenLabsVoicePreset.Volume,
                     elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
             }
@@ -59,6 +65,21 @@ public class ElevenLabsBackend : VoiceBackend
                 DetailedLog.Error(e, "ElevenLabs API keys are incorrect or invalid.");
             }
         });
+    }
+
+    public void LoadCredentials()
+    {
+        var credentials = ElevenLabsCredentialManager.LoadCredentials();
+        if (credentials != null)
+        {
+            this.apiKey = credentials.UserName;
+            this.apiSecret = credentials.Password;
+        }
+
+
+        this.ElevenLabs.ApiKey = this.apiKey;
+        this.ElevenLabs.ApiSecret = this.apiSecret;
+        this.ElevenLabs._client.DefaultRequestHeaders.Add("xi-api-key", apiKey);
     }
 
     public override void CancelAllSpeech()

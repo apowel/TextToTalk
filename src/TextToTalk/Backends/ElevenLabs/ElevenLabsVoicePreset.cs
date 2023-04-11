@@ -5,8 +5,8 @@ namespace TextToTalk.Backends.ElevenLabs;
 public class ElevenLabsVoicePreset : VoicePreset
 {
     [JsonProperty("ElevenLabsVolume")] public float Volume { get; set; }
-    [JsonProperty("stability")] public int? Stability { get; set; }
-    [JsonProperty("similarity_boost")] public int? SimilarityBoost { get; set; }
+    [JsonProperty("stability")] public double? Stability { get; set; }
+    [JsonProperty("similarity_boost")] public double? SimilarityBoost { get; set; }
     [JsonProperty("name")] public string? VoiceName { get; set; }
     [JsonProperty("voice_id")] public string? VoiceId { get; set; }
     public int PlaybackRate { get; set; }
@@ -14,8 +14,8 @@ public class ElevenLabsVoicePreset : VoicePreset
     public override bool TrySetDefaultValues()
     {
         Volume = 1.0f;
-        Stability = 0;
-        SimilarityBoost = 0;
+        Stability = 0.75;
+        SimilarityBoost = 0.75;
         VoiceId = "Lzt91aqyBlu8xGgcxUBR";
         VoiceName = "Yshtola";
         PlaybackRate = 100;
