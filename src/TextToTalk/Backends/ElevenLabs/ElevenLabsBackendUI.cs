@@ -102,48 +102,48 @@ public class ElevenLabsBackendUI
             currentVoicePreset.VoiceName = defaultVoice.Name;
             currentVoicePreset.VoiceId = defaultVoice.VoiceId;
         }
-        // var presetName = currentVoicePreset.Name;
-        // if (ImGui.InputText($"Preset name##{MemoizedId.Create()}", ref presetName, 64))
-        // {
-        //     currentVoicePreset.Name = presetName;
-        //     this.config.Save();
-        // }
-        //
-        // {
-        //     var voiceCategories = this.getVoices.Invoke();
-        //     var voiceCategoriesFlat = voiceCategories.SelectMany(vc => vc.Value).ToList();
-        //     var voiceNames = voiceCategoriesFlat.Select(v => v.Name).ToArray();
-        //     var voiceIds = voiceCategoriesFlat.Select(v => v.Name).ToArray();
-        //     var voiceIndex = Array.IndexOf(voiceIds, currentVoicePreset.VoiceName);
-        //     if (ImGui.BeginCombo($"Voice##{MemoizedId.Create()}", voiceNames[voiceIndex]))
-        //     {
-        //         foreach (var (category, voices) in voiceCategories)
-        //         {
-        //             ImGui.Selectable(category, false, ImGuiSelectableFlags.Disabled);
-        //             foreach (var voice in voices)
-        //             {
-        //                 if (ImGui.Selectable($"  {voice.Name}"))
-        //                 {
-        //                     currentVoicePreset.VoiceName = voice.Name;
-        //                     this.config.Save();
-        //                 }
-        //
-        //                 if (voice.Name == currentVoicePreset.VoiceName)
-        //                 {
-        //                     ImGui.SetItemDefaultFocus();
-        //                 }
-        //             }
-        //         }
-        //
-        //         ImGui.EndCombo();
-        //     }
-        //
-        //     if (voiceCategoriesFlat.Count == 0)
-        //     {
-        //         ImGui.TextColored(BackendUI.Red,
-        //             "No voices were found. This might indicate a temporary service outage.");
-        //     }
-        // }
+        var presetName = currentVoicePreset.Name;
+        if (ImGui.InputText($"Preset name##{MemoizedId.Create()}", ref presetName, 64))
+        {
+            currentVoicePreset.Name = presetName;
+            this.config.Save();
+        }
+        
+        {
+            var voiceCategories = this.getVoices.Invoke();
+            var voiceCategoriesFlat = voiceCategories.SelectMany(vc => vc.Value).ToList();
+            var voiceNames = voiceCategoriesFlat.Select(v => v.Name).ToArray();
+            var voiceIds = voiceCategoriesFlat.Select(v => v.Name).ToArray();
+            var voiceIndex = Array.IndexOf(voiceIds, currentVoicePreset.VoiceName);
+            if (ImGui.BeginCombo($"Voice##{MemoizedId.Create()}", voiceNames[voiceIndex]))
+            {
+                foreach (var (category, voices) in voiceCategories)
+                {
+                    ImGui.Selectable(category, false, ImGuiSelectableFlags.Disabled);
+                    foreach (var voice in voices)
+                    {
+                        if (ImGui.Selectable($"  {voice.Name}"))
+                        {
+                            currentVoicePreset.VoiceName = voice.Name;
+                            this.config.Save();
+                        }
+        
+                        if (voice.Name == currentVoicePreset.VoiceName)
+                        {
+                            ImGui.SetItemDefaultFocus();
+                        }
+                    }
+                }
+        
+                ImGui.EndCombo();
+            }
+        
+            if (voiceCategoriesFlat.Count == 0)
+            {
+                ImGui.TextColored(BackendUI.Red,
+                    "No voices were found. This might indicate a temporary service outage.");
+            }
+        }
 
         var playbackRate = currentVoicePreset.PlaybackRate;
         if (ImGui.SliderInt($"Playback rate##{MemoizedId.Create()}", ref playbackRate, 20, 200, "%d%%",
