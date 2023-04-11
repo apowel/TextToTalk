@@ -44,13 +44,11 @@ public class ElevenLabsBackendUI
 
         ImGui.InputTextWithHint($"##{MemoizedId.Create()}", "API key", ref this.apiKey, 100,
             ImGuiInputTextFlags.Password);
-        ImGui.InputTextWithHint($"##{MemoizedId.Create()}", "API secret", ref this.apiSecret, 100,
-            ImGuiInputTextFlags.Password);
 
-        if (ImGui.Button($"Save and Login##{MemoizedId.Create()}"))
+        if (ImGui.Button($"Save ApiKey##{MemoizedId.Create()}"))
         {
             var username = Whitespace.Replace(this.apiKey, "");
-            var password = Whitespace.Replace(this.apiSecret, "");
+            var password = "poop";
             ElevenLabsCredentialManager.SaveCredentials(username, password);
             this.ElevenLabs.ApiKey = username;
             this.ElevenLabs.ApiSecret = password;
@@ -59,7 +57,7 @@ public class ElevenLabsBackendUI
         ImGui.SameLine();
         if (ImGui.Button($"Register##{MemoizedId.Create()}"))
         {
-            WebBrowser.Open("https://ElevenLabs.ai/");
+            WebBrowser.Open("https://ElevenLabs.io/");
         }
 
         ImGui.TextColored(BackendUI.HintColor, "Credentials secured with Windows Credential Manager");
@@ -100,51 +98,52 @@ public class ElevenLabsBackendUI
             this.config);
         if (string.IsNullOrEmpty(currentVoicePreset.VoiceName))
         {
-            currentVoicePreset.VoiceName = loadedVoices.SelectMany(e => e.Value).FirstOrDefault().Name;
-            currentVoicePreset.VoiceId = loadedVoices.SelectMany(e => e.Value).FirstOrDefault().VoiceId;
+            var defaultVoice = loadedVoices.SelectMany(e => e.Value).Where(e => e.Category == "generated").FirstOrDefault();
+            currentVoicePreset.VoiceName = defaultVoice.Name;
+            currentVoicePreset.VoiceId = defaultVoice.VoiceId;
         }
-        var presetName = currentVoicePreset.Name;
-        if (ImGui.InputText($"Preset name##{MemoizedId.Create()}", ref presetName, 64))
-        {
-            currentVoicePreset.Name = presetName;
-            this.config.Save();
-        }
-
-        {
-            var voiceCategories = this.getVoices.Invoke();
-            var voiceCategoriesFlat = voiceCategories.SelectMany(vc => vc.Value).ToList();
-            var voiceNames = voiceCategoriesFlat.Select(v => v.Name).ToArray();
-            var voiceIds = voiceCategoriesFlat.Select(v => v.Name).ToArray();
-            var voiceIndex = Array.IndexOf(voiceIds, currentVoicePreset.VoiceName);
-            if (ImGui.BeginCombo($"Voice##{MemoizedId.Create()}", voiceNames[voiceIndex]))
-            {
-                foreach (var (category, voices) in voiceCategories)
-                {
-                    ImGui.Selectable(category, false, ImGuiSelectableFlags.Disabled);
-                    foreach (var voice in voices)
-                    {
-                        if (ImGui.Selectable($"  {voice.Name}"))
-                        {
-                            currentVoicePreset.VoiceName = voice.Name;
-                            this.config.Save();
-                        }
-
-                        if (voice.Name == currentVoicePreset.VoiceName)
-                        {
-                            ImGui.SetItemDefaultFocus();
-                        }
-                    }
-                }
-
-                ImGui.EndCombo();
-            }
-
-            if (voiceCategoriesFlat.Count == 0)
-            {
-                ImGui.TextColored(BackendUI.Red,
-                    "No voices were found. This might indicate a temporary service outage.");
-            }
-        }
+        // var presetName = currentVoicePreset.Name;
+        // if (ImGui.InputText($"Preset name##{MemoizedId.Create()}", ref presetName, 64))
+        // {
+        //     currentVoicePreset.Name = presetName;
+        //     this.config.Save();
+        // }
+        //
+        // {
+        //     var voiceCategories = this.getVoices.Invoke();
+        //     var voiceCategoriesFlat = voiceCategories.SelectMany(vc => vc.Value).ToList();
+        //     var voiceNames = voiceCategoriesFlat.Select(v => v.Name).ToArray();
+        //     var voiceIds = voiceCategoriesFlat.Select(v => v.Name).ToArray();
+        //     var voiceIndex = Array.IndexOf(voiceIds, currentVoicePreset.VoiceName);
+        //     if (ImGui.BeginCombo($"Voice##{MemoizedId.Create()}", voiceNames[voiceIndex]))
+        //     {
+        //         foreach (var (category, voices) in voiceCategories)
+        //         {
+        //             ImGui.Selectable(category, false, ImGuiSelectableFlags.Disabled);
+        //             foreach (var voice in voices)
+        //             {
+        //                 if (ImGui.Selectable($"  {voice.Name}"))
+        //                 {
+        //                     currentVoicePreset.VoiceName = voice.Name;
+        //                     this.config.Save();
+        //                 }
+        //
+        //                 if (voice.Name == currentVoicePreset.VoiceName)
+        //                 {
+        //                     ImGui.SetItemDefaultFocus();
+        //                 }
+        //             }
+        //         }
+        //
+        //         ImGui.EndCombo();
+        //     }
+        //
+        //     if (voiceCategoriesFlat.Count == 0)
+        //     {
+        //         ImGui.TextColored(BackendUI.Red,
+        //             "No voices were found. This might indicate a temporary service outage.");
+        //     }
+        // }
 
         var playbackRate = currentVoicePreset.PlaybackRate;
         if (ImGui.SliderInt($"Playback rate##{MemoizedId.Create()}", ref playbackRate, 20, 200, "%d%%",
@@ -158,6 +157,18 @@ public class ElevenLabsBackendUI
         if (ImGui.SliderInt($"Volume##{MemoizedId.Create()}", ref volume, 0, 100))
         {
             currentVoicePreset.Volume = (float)Math.Round((double)volume / 100, 2);
+            this.config.Save();
+        }
+        var stability = (int)(currentVoicePreset.Stability * 100);
+        if (ImGui.SliderInt($"Stability##{MemoizedId.Create()}", ref stability, 0, 100))
+        {
+            currentVoicePreset.Stability = Math.Round((double)stability / 100, 2);
+            this.config.Save();
+        }
+        var similarity = (int)(currentVoicePreset.SimilarityBoost * 100);
+        if (ImGui.SliderInt($"Similarity##{MemoizedId.Create()}", ref similarity, 0, 100))
+        {
+            currentVoicePreset.SimilarityBoost = Math.Round((double)similarity / 100, 2);
             this.config.Save();
         }
 
@@ -174,6 +185,7 @@ public class ElevenLabsBackendUI
             ImGui.Spacing();
             if (this.config.UseGenderedVoicePresets)
             {
+                
                 BackendUI.GenderedPresetConfig("ElevenLabs", TTSBackend.ElevenLabs, this.config, presets);
             }
         }

@@ -88,7 +88,7 @@ public class ElevenLabsBackend : VoiceBackend
             .FirstOrDefault(v => regex.Replace(v.Name, "").ToLowerInvariant() == sanitizedVoiceName);
         if (voice == null)
         {
-            voice = myVoices.SelectMany(pair => pair.Value).FirstOrDefault();
+            voice = myVoices.SelectMany(pair => pair.Value).Where(e => e.Category == "generated").FirstOrDefault();
         }
         return voice;
     }
