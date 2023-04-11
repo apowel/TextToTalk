@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,16 +19,15 @@ public class ElevenLabsHttpClient : IDisposable
 {
     private readonly HttpClient _client;
     private const string BaseUrl = "https://api.elevenlabs.io/v1/";
-    private readonly ElevenLabsClient _labClient;
     private readonly StreamSoundQueue _soundQueue;
-
-    public ElevenLabsHttpClient(string subscriptionKey)
+    public string ApiKey { private get; set; }
+    public string ApiSecret { private get; set; }
+    public ElevenLabsHttpClient(StreamSoundQueue soundQueue, HttpClient http)
     {
-        _labClient = new ElevenLabsClient(new ElevenLabsAuthentication(subscriptionKey));
-        _client = new HttpClient();
+        _client = http;
         _client.BaseAddress = new Uri("https://api.elevenlabs.io/v1/");
-        _client.DefaultRequestHeaders.Add("xi-api-key", subscriptionKey);
-        _soundQueue = new StreamSoundQueue();
+        _client.DefaultRequestHeaders.Add("xi-api-key", ApiKey);
+        _soundQueue = soundQueue;
     }
 
     public TextSource GetCurrentlySpokenTextSource()
@@ -34,15 +35,20 @@ public class ElevenLabsHttpClient : IDisposable
         return this._soundQueue.GetCurrentlySpokenTextSource();
     }
 
-    public List<string> GetVoices()
+    public async Task<IDictionary<string, IList<ElevenLabsVoice>>> GetVoices()
     {
-        var res = _labClient.VoicesEndpoint.GetAllVoicesAsync().GetAwaiter().GetResult();
-        return res.Select(voice => voice.Id).ToList();
+        var voicesRes = await this._client.GetStringAsync(new Uri("https://api.elevenlabs.io/v1/voices"));
+        var voices = JsonConvert.DeserializeObject<List<ElevenLabsVoice>>(voicesRes);
+        return voices
+            .GroupBy(v => v.Category)
+            .ToImmutableSortedDictionary(
+                g => g.Key,
+                g => (IList<ElevenLabsVoice>)g.OrderByDescending(v => v.Name).ToList());
     }
-    public async Task Say(VoicePreset voice, string text, TextSource source, float volume, int stability = 0, int similarityBoost = 0)
+    public async Task Say(string voiceId, string text, TextSource source, float volume, int? stability, int? similarityBoost)
     {
         
-        var requestUrl = $"{BaseUrl}/text-to-speech/{voice.Id}/stream";
+        var requestUrl = $"{BaseUrl}/text-to-speech/{voiceId}/stream";
         var requestBody = new
         {
             text,

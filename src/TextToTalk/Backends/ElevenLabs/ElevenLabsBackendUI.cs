@@ -1,66 +1,86 @@
-﻿using System;
-using System.IO;
+﻿using ImGuiNET;
+using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using ImGuiNET;
-using TextToTalk.Lexicons;
-using TextToTalk.Lexicons.Updater;
+using System.Text.RegularExpressions;
 using TextToTalk.UI;
-using TextToTalk.UI.Lexicons;
 
 namespace TextToTalk.Backends.ElevenLabs;
 
 public class ElevenLabsBackendUI
 {
     private readonly PluginConfiguration config;
-    private readonly LexiconComponent lexiconComponent;
-    private readonly ElevenLabsBackendUIModel model;
+    private readonly ElevenLabsHttpClient ElevenLabs;
+    private readonly Func<IDictionary<string, IList<ElevenLabsVoice>>> getVoices;
 
-    public ElevenLabsBackendUI(ElevenLabsBackendUIModel model, PluginConfiguration config, LexiconManager lexiconManager,
-        HttpClient http)
+    private string apiKey = string.Empty;
+    private string apiSecret = string.Empty;
+
+    public ElevenLabsBackendUI(PluginConfiguration config, ElevenLabsHttpClient ElevenLabs,
+        Func<IDictionary<string, IList<ElevenLabsVoice>>> getVoices)
     {
-        this.model = model;
-
-        // TODO: Make this configurable
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var downloadPath = Path.Join(appData, "TextToTalk");
-        var lexiconRepository = new LexiconRepository(http, downloadPath);
-
         this.config = config;
-        this.lexiconComponent =
-            new LexiconComponent(lexiconManager, lexiconRepository, config, Array.Empty<string>);
+        this.ElevenLabs = ElevenLabs;
+        this.getVoices = getVoices;
+
+        var credentials = ElevenLabsCredentialManager.LoadCredentials();
+        if (credentials != null)
+        {
+            this.apiKey = credentials.UserName;
+            this.apiSecret = credentials.Password;
+        }
+
+        this.ElevenLabs.ApiKey = this.apiKey;
+        this.ElevenLabs.ApiSecret = this.apiSecret;
     }
+
+    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
 
     public void DrawSettings(IConfigUIDelegates helpers)
     {
-        var subscriptionKey = this.model.GetLoginInfo().SubscriptionKey;
-        ImGui.InputTextWithHint($"##{MemoizedId.Create()}", "Subscription key", ref subscriptionKey, 100,
+        ImGui.TextColored(BackendUI.HintColor, "TTS may be delayed due to rate-limiting.");
+        ImGui.Spacing();
+
+        ImGui.InputTextWithHint($"##{MemoizedId.Create()}", "API key", ref this.apiKey, 100,
+            ImGuiInputTextFlags.Password);
+        ImGui.InputTextWithHint($"##{MemoizedId.Create()}", "API secret", ref this.apiSecret, 100,
             ImGuiInputTextFlags.Password);
 
-        if (ImGui.Button($"Save##{MemoizedId.Create()}"))
+        if (ImGui.Button($"Save and Login##{MemoizedId.Create()}"))
         {
-            this.model.LoginWith(subscriptionKey);
+            var username = Whitespace.Replace(this.apiKey, "");
+            var password = Whitespace.Replace(this.apiSecret, "");
+            ElevenLabsCredentialManager.SaveCredentials(username, password);
+            this.ElevenLabs.ApiKey = username;
+            this.ElevenLabs.ApiSecret = password;
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button($"Register##{MemoizedId.Create()}"))
+        {
+            WebBrowser.Open("https://ElevenLabs.ai/");
         }
 
         ImGui.TextColored(BackendUI.HintColor, "Credentials secured with Windows Credential Manager");
 
         ImGui.Spacing();
 
-        var currentVoicePreset = this.model.GetCurrentVoicePreset();
+        var currentVoicePreset = this.config.GetCurrentVoicePreset<ElevenLabsVoicePreset>();
 
         var presets = this.config.GetVoicePresetsForBackend(TTSBackend.ElevenLabs).ToList();
         presets.Sort((a, b) => a.Id - b.Id);
 
-        if (presets.Any() && currentVoicePreset != null)
+        if (presets.Any())
         {
-            var presetIndex = presets.IndexOf(currentVoicePreset);
+            var presetIndex = currentVoicePreset is not null ? presets.IndexOf(currentVoicePreset) : -1;
             if (ImGui.Combo($"Preset##{MemoizedId.Create()}", ref presetIndex, presets.Select(p => p.Name).ToArray(),
                     presets.Count))
             {
-                this.model.SetCurrentVoicePreset(presets[presetIndex].Id);
+                this.config.SetCurrentVoicePreset(presets[presetIndex].Id);
+                this.config.Save();
             }
         }
-        else if (currentVoicePreset != null)
+        else
         {
             ImGui.TextColored(BackendUI.Red, "You have no presets. Please create one using the \"New preset\" button.");
         }
@@ -87,25 +107,38 @@ public class ElevenLabsBackendUI
         }
 
         {
-            var voices = this.model.Voices;
-            string?[] voiceArray = voices.ToArray();
-            var voiceIndex = Array.IndexOf(voiceArray, currentVoicePreset.VoiceName);
-            if (ImGui.Combo($"Voice##{MemoizedId.Create()}", ref voiceIndex, voiceArray, voices.Count))
+            var voiceCategories = this.getVoices.Invoke();
+            var voiceCategoriesFlat = voiceCategories.SelectMany(vc => vc.Value).ToList();
+            var voiceNames = voiceCategoriesFlat.Select(v => v.Name).ToArray();
+            var voiceIds = voiceCategoriesFlat.Select(v => v.Name).ToArray();
+            var voiceIndex = Array.IndexOf(voiceIds, currentVoicePreset.VoiceName);
+            if (ImGui.BeginCombo($"Voice##{MemoizedId.Create()}", voiceNames[voiceIndex]))
             {
-                currentVoicePreset.VoiceName = voiceArray[voiceIndex];
-                this.config.Save();
+                foreach (var (category, voices) in voiceCategories)
+                {
+                    ImGui.Selectable(category, false, ImGuiSelectableFlags.Disabled);
+                    foreach (var voice in voices)
+                    {
+                        if (ImGui.Selectable($"  {voice.Name}"))
+                        {
+                            currentVoicePreset.VoiceName = voice.Name;
+                            this.config.Save();
+                        }
+
+                        if (voice.Name == currentVoicePreset.VoiceName)
+                        {
+                            ImGui.SetItemDefaultFocus();
+                        }
+                    }
+                }
+
+                ImGui.EndCombo();
             }
 
-            switch (voices.Count)
+            if (voiceCategoriesFlat.Count == 0)
             {
-                case 0:
-                    ImGui.TextColored(BackendUI.Red,
-                        "No voices are available on this voice engine for the current region.\n" +
-                        "Please log in using a different region.");
-                    break;
-                case > 0 when !voices.Any(v => v == currentVoicePreset.VoiceName):
-                    BackendUI.ImGuiVoiceNotSelected();
-                    break;
+                ImGui.TextColored(BackendUI.Red,
+                    "No voices were found. This might indicate a temporary service outage.");
             }
         }
 
@@ -118,13 +151,15 @@ public class ElevenLabsBackendUI
         }
 
         var volume = (int)(currentVoicePreset.Volume * 100);
-        if (ImGui.SliderInt($"Volume##{MemoizedId.Create()}", ref volume, 0, 200, "%d%%"))
+        if (ImGui.SliderInt($"Volume##{MemoizedId.Create()}", ref volume, 0, 100))
         {
             currentVoicePreset.Volume = (float)Math.Round((double)volume / 100, 2);
             this.config.Save();
         }
 
-        this.lexiconComponent.Draw();
+        ImGui.Text("Lexicons");
+        ImGui.TextColored(BackendUI.HintColor, "Lexicons are not supported on the ElevenLabs backend.");
+
         ImGui.Spacing();
 
         {

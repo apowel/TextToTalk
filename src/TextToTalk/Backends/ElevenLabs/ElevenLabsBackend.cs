@@ -1,63 +1,73 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using ElevenLabs.Voices;
 using ImGuiNET;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace TextToTalk.Backends.ElevenLabs;
 
+/// <summary>
+/// The logic for the ElevenLabs backend. ElevenLabs changed its offerings to not include a
+/// free option, so this likely won't see many updates going forward.
+/// </summary>
 public class ElevenLabsBackend : VoiceBackend
 {
+    private readonly StreamSoundQueue soundQueue;
     private readonly ElevenLabsBackendUI ui;
-    private readonly ElevenLabsBackendUIModel uiModel;
+    private readonly ElevenLabsHttpClient? ElevenLabs;
 
     public ElevenLabsBackend(PluginConfiguration config, HttpClient http)
     {
-        TitleBarColor = ImGui.ColorConvertU32ToFloat4(0xFFF96800);
+        TitleBarColor = ImGui.ColorConvertU32ToFloat4(0xFFDE7312);
 
-        var lexiconManager = new DalamudLexiconManager();
-        //LexiconUtils.LoadFromConfigElevenLabs(lexiconManager, config);
+        this.soundQueue = new StreamSoundQueue();
+        this.ElevenLabs = new ElevenLabsHttpClient(this.soundQueue, http);
 
-        this.uiModel = new ElevenLabsBackendUIModel(config, lexiconManager);
-        this.ui = new ElevenLabsBackendUI(this.uiModel, config, lexiconManager, http);
+        var voices = this.ElevenLabs.GetVoices().GetAwaiter().GetResult();
+        this.ui = new ElevenLabsBackendUI(config, this.ElevenLabs, () => voices);
     }
 
-    public override void Say(TextSource source, VoicePreset voice, string speaker, string text)
+    public override void Say(TextSource source, VoicePreset preset, string speaker, string text)
     {
-        if (voice is not ElevenLabsVoicePreset elevenLabsVoicePreset)
+        if (preset is not ElevenLabsVoicePreset elevenLabsVoicePreset)
         {
             throw new InvalidOperationException("Invalid voice preset provided.");
         }
 
-        if (this.uiModel.ElevenLabs == null)
+        if (this.ElevenLabs == null)
         {
             DetailedLog.Warn("ElevenLabs client has not yet been initialized");
             return;
         }
 
-        _ = this.uiModel.ElevenLabs.Say(voice, text, source, elevenLabsVoicePreset.Volume, elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await this.ElevenLabs.Say(elevenLabsVoicePreset.VoiceId, text, source, elevenLabsVoicePreset.Volume, elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
+            }
+            catch (ElevenLabsFailedException e)
+            {
+                DetailedLog.Error(e, $"Failed to make ElevenLabs TTS request ({e.StatusCode}).");
+            }
+            catch (ElevenLabsMissingCredentialsException e)
+            {
+                DetailedLog.Warn(e.Message);
+            }
+            catch (ElevenLabsUnauthorizedException e)
+            {
+                DetailedLog.Error(e, "ElevenLabs API keys are incorrect or invalid.");
+            }
+        });
     }
 
     public override void CancelAllSpeech()
     {
-        if (this.uiModel.ElevenLabs == null)
-        {
-            DetailedLog.Warn("ElevenLabs client has not yet been initialized");
-            return;
-        }
-
-        _ = this.uiModel.ElevenLabs.CancelAllSounds();
+        this.soundQueue.CancelAllSounds();
     }
 
     public override void CancelSay(TextSource source)
     {
-        if (this.uiModel.ElevenLabs == null)
-        {
-            DetailedLog.Warn("ElevenLabs client has not yet been initialized");
-            return;
-        }
-
-        _ = this.uiModel.ElevenLabs.CancelFromSource(source);
+        this.soundQueue.CancelFromSource(source);
     }
 
     public override void DrawSettings(IConfigUIDelegates helpers)
@@ -67,20 +77,14 @@ public class ElevenLabsBackend : VoiceBackend
 
     public override TextSource GetCurrentlySpokenTextSource()
     {
-        if (this.uiModel.ElevenLabs == null)
-        {
-            DetailedLog.Warn("ElevenLabs client has not yet been initialized");
-            return TextSource.None;
-        }
-
-        return this.uiModel.ElevenLabs.GetCurrentlySpokenTextSource();
+        return this.soundQueue.GetCurrentlySpokenTextSource();
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            this.uiModel.ElevenLabs?.Dispose();
+            this.soundQueue.Dispose();
         }
     }
 }
