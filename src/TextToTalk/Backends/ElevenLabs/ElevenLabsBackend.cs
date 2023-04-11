@@ -43,7 +43,8 @@ public class ElevenLabsBackend : VoiceBackend
         {
             try
             {
-                await this.ElevenLabs.Say(elevenLabsVoicePreset.VoiceId, text, source, elevenLabsVoicePreset.Volume, elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
+                await this.ElevenLabs.Say(elevenLabsVoicePreset.VoiceId, text, source, elevenLabsVoicePreset.Volume,
+                    elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
             }
             catch (ElevenLabsFailedException e)
             {

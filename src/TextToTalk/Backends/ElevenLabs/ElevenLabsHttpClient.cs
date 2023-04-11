@@ -24,7 +24,7 @@ public class ElevenLabsHttpClient : IDisposable
     public string ApiSecret { private get; set; }
     public ElevenLabsHttpClient(StreamSoundQueue soundQueue, HttpClient http)
     {
-        _client = http;
+        _client = new HttpClient();
         _client.BaseAddress = new Uri("https://api.elevenlabs.io/v1/");
         _client.DefaultRequestHeaders.Add("xi-api-key", ApiKey);
         _soundQueue = soundQueue;
@@ -35,15 +35,36 @@ public class ElevenLabsHttpClient : IDisposable
         return this._soundQueue.GetCurrentlySpokenTextSource();
     }
 
+    // public async Task<IDictionary<string, IList<ElevenLabsVoice>>> GetVoices()
+    // {
+    //     var voicesRes = await this._client.GetStringAsync(new Uri($"{BaseUrl}voices"));
+    //     var voices = JsonConvert.DeserializeObject<List<ElevenLabsVoice>>(voicesRes);
+    //     return voices
+    //         .GroupBy(v => v.Category)
+    //         .ToImmutableSortedDictionary(
+    //             g => g.Key,
+    //             g => (IList<ElevenLabsVoice>)g.OrderByDescending(v => v.Name).ToList());
+    // }
     public async Task<IDictionary<string, IList<ElevenLabsVoice>>> GetVoices()
     {
-        var voicesRes = await this._client.GetStringAsync(new Uri("https://api.elevenlabs.io/v1/voices"));
-        var voices = JsonConvert.DeserializeObject<List<ElevenLabsVoice>>(voicesRes);
-        return voices
-            .GroupBy(v => v.Category)
-            .ToImmutableSortedDictionary(
-                g => g.Key,
-                g => (IList<ElevenLabsVoice>)g.OrderByDescending(v => v.Name).ToList());
+        var requestUrl = $"{BaseUrl}voices";
+        var response = await _client.GetAsync(requestUrl);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            var voices = JsonConvert.DeserializeObject<List<ElevenLabsVoice>>(jsonResponse);
+            return voices
+                .GroupBy(v => v.Category)
+                .ToImmutableSortedDictionary(
+                    g => g.Key,
+                    g => (IList<ElevenLabsVoice>)g.OrderByDescending(v => v.Name).ToList());
+        }
+        else
+        {
+            return null;
+        }
+        throw new Exception($"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");
     }
     public async Task Say(string voiceId, string text, TextSource source, float volume, int? stability, int? similarityBoost)
     {
