@@ -125,6 +125,7 @@ public class ElevenLabsBackendUI
                         if (ImGui.Selectable($"  {voice.Name}"))
                         {
                             currentVoicePreset.VoiceName = voice.Name;
+                            currentVoicePreset.VoiceId = voice.VoiceId;
                             this.config.Save();
                         }
         

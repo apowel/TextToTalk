@@ -14,7 +14,7 @@ public class ElevenLabsVoicePreset : VoicePreset
     public override bool TrySetDefaultValues()
     {
         Volume = 1.0f;
-        Stability = 0.75;
+        Stability = 0.65;
         SimilarityBoost = 0.75;
         PlaybackRate = 100;
         EnabledBackend = TTSBackend.ElevenLabs;

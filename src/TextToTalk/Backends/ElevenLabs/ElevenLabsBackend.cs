@@ -40,7 +40,7 @@ public class ElevenLabsBackend : VoiceBackend
 
     public override void Say(TextSource source, VoicePreset preset, string speaker, string text)
     {
-        ElevenLabsVoice voice = GetVoiceByName(speaker);
+        //ElevenLabsVoice voice = GetVoiceByName(speaker);
         
         
         if (preset is not ElevenLabsVoicePreset elevenLabsVoicePreset)
@@ -48,7 +48,7 @@ public class ElevenLabsBackend : VoiceBackend
             throw new InvalidOperationException("Invalid voice preset provided.");
         }
 
-        elevenLabsVoicePreset.VoiceId = voice.VoiceId;
+        //elevenLabsVoicePreset.VoiceId = voice.VoiceId;
         if (this.ElevenLabs == null)
         {
             DetailedLog.Warn("ElevenLabs client has not yet been initialized");
@@ -60,8 +60,7 @@ public class ElevenLabsBackend : VoiceBackend
             try
             {
                 
-                await this.ElevenLabs.Say(elevenLabsVoicePreset.VoiceId, text, source, elevenLabsVoicePreset.Volume,
-                    elevenLabsVoicePreset.Stability, elevenLabsVoicePreset.SimilarityBoost);
+                await this.ElevenLabs.Say(elevenLabsVoicePreset, text, source);
             }
             catch (ElevenLabsFailedException e)
             {

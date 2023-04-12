@@ -65,17 +65,17 @@ public class ElevenLabsHttpClient : IDisposable
         }
         throw new Exception($"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");
     }
-    public async Task Say(string voiceId, string text, TextSource source, float volume, double? stability, double? similarityBoost)
+    public async Task Say(ElevenLabsVoicePreset preset, string text, TextSource source)
     {
         
-        var requestUrl = $"{BaseUrl}text-to-speech/{voiceId}/stream";
+        var requestUrl = $"{BaseUrl}text-to-speech/{preset.VoiceId}/stream";
         var requestBody = new
         {
             text,
             voice_settings = new
             {
-                stability,
-                similarity_boost = similarityBoost
+                stability = preset.Stability,
+                similarity_boost = preset.SimilarityBoost
             }
         };
 
@@ -87,7 +87,7 @@ public class ElevenLabsHttpClient : IDisposable
             var audio = new MemoryStream();
             await response.Content.CopyToAsync(audio);
             audio.Position = 0;
-            _soundQueue.EnqueueSound(audio, source, StreamFormat.Mp3, volume);
+            _soundQueue.EnqueueSound(audio, source, StreamFormat.Mp3, preset.Volume);
             return;
         }
 
