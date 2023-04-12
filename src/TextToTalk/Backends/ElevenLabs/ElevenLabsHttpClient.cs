@@ -65,10 +65,10 @@ public class ElevenLabsHttpClient : IDisposable
         }
         throw new Exception($"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");
     }
-    public async Task Say(ElevenLabsVoicePreset preset, string text, TextSource source)
+    public async Task Say(ElevenLabsVoicePreset preset, string text, TextSource source, string? voiceOverride)
     {
         
-        var requestUrl = $"{BaseUrl}text-to-speech/{preset.VoiceId}/stream";
+        var requestUrl = $"{BaseUrl}text-to-speech/{voiceOverride??preset.VoiceId}/stream";
         var requestBody = new
         {
             text,

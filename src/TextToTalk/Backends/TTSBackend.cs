@@ -23,7 +23,7 @@ namespace TextToTalk.Backends
                 TTSBackend.AmazonPolly => "Amazon Polly",
                 TTSBackend.Uberduck => "Uberduck",
                 TTSBackend.Azure => "Azure Cognitive Services",
-                TTSBackend.ElevenLabs => "ElevenLabs Services",
+                TTSBackend.ElevenLabs => "ElevenLabs",
                 _ => throw new ArgumentOutOfRangeException(nameof(backend)),
             };
         }

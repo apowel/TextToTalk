@@ -10,6 +10,7 @@ public class ElevenLabsVoicePreset : VoicePreset
     [JsonProperty("name")] public string? VoiceName { get; set; }
     [JsonProperty("voice_id")] public string? VoiceId { get; set; }
     public int PlaybackRate { get; set; }
+    public bool CharacterOverride { get; set; }
 
     public override bool TrySetDefaultValues()
     {
@@ -18,6 +19,7 @@ public class ElevenLabsVoicePreset : VoicePreset
         SimilarityBoost = 0.75;
         PlaybackRate = 100;
         EnabledBackend = TTSBackend.ElevenLabs;
+        CharacterOverride = true;
         return true;
     }
 }

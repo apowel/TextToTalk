@@ -175,7 +175,13 @@ public class ElevenLabsBackendUI
 
         ImGui.Text("Lexicons");
         ImGui.TextColored(BackendUI.HintColor, "Lexicons are not supported on the ElevenLabs backend.");
-
+        ImGui.Spacing();
+        var characterOverride = currentVoicePreset.CharacterOverride;
+        if (ImGui.Checkbox($"Override voices with matching named voices (if created in ElvenLabs)##{MemoizedId.Create()}", ref characterOverride))
+        {
+            currentVoicePreset.CharacterOverride = characterOverride;
+            this.config.Save();
+        }
         ImGui.Spacing();
 
         {
