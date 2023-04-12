@@ -191,7 +191,7 @@ namespace TextToTalk
                 .Where(_ => this.config.Enabled)
                 .SubscribeOn(TaskPoolScheduler.Default)
                 .Subscribe(
-                    ev => Say(ev.Speaker, ev.Text.TextValue, ev.Source),
+                    ev => Say(ev.Speaker, ev.SpeakerName, ev.Text.TextValue, ev.Source),
                     ex => DetailedLog.Error(ex, "Failed to handle text emit event"));
         }
 
@@ -286,7 +286,7 @@ namespace TextToTalk
             this.notifiedNoPresetsConfigured = true;
         }
 
-        private void Say(GameObject? speaker, string textValue, TextSource source)
+        private void Say(GameObject? speaker, SeString speakerName, string textValue, TextSource source)
         {
             // Check if this speaker should be skipped
             if (speaker != null && ShouldRateLimit(speaker))
@@ -311,8 +311,7 @@ namespace TextToTalk
 
             // Check if the speaker is a player and we have a custom voice for this speaker
             if (speaker is PlayerCharacter pc &&
-                this.playerService.TryGetPlayerByInfo(TalkUtils.StripWorldFromNames(pc.Name.TextValue), pc.HomeWorld.Id,
-                    out var playerInfo) &&
+                this.playerService.TryGetPlayerByInfo(speakerName.TextValue, pc.HomeWorld.Id, out var playerInfo) &&
                 this.playerService.TryGetPlayerVoice(playerInfo, out var playerVoice))
             {
                 if (playerVoice.EnabledBackend != this.config.Backend)
@@ -556,6 +555,7 @@ namespace TextToTalk
             this.backendManager.Dispose();
             this.http.Dispose();
 
+            this.addonBattleTalkManager.Dispose();
             this.addonTalkManager.Dispose();
         }
 
