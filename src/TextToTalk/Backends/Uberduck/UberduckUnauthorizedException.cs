@@ -1,10 +1,10 @@
 ﻿using System;
 
-namespace TextToTalk.Backends.Uberduck;
+namespace TextToTalk.Backends.ElevenLabs;
 
-public class UberduckUnauthorizedException : Exception
+public class ElevenLabsUnauthorizedException : Exception
 {
-    public UberduckUnauthorizedException(string message) : base(message)
+    public ElevenLabsUnauthorizedException(string message) : base(message)
     {
     }
 }

@@ -1171,6 +1171,7 @@
           "AWSSDK.Polly": "[3.7.106.22, )",
           "AdysTech.CredentialManager": "[2.6.0, )",
           "DalamudPackager": "[2.1.11, )",
+          "ElevenLabs-DotNet": "[1.1.1, )",
           "Microsoft.CognitiveServices.Speech": "[1.26.0, )",
           "NAudio": "[2.1.0, )",
           "Standart.Hash.xxHash": "[4.0.5, )",

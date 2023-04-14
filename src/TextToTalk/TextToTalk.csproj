@@ -37,6 +37,7 @@
 		<PackageReference Include="AdysTech.CredentialManager" Version="2.6.0" />
 		<PackageReference Include="AWSSDK.Polly" Version="3.7.106.22" />
 		<PackageReference Include="DalamudPackager" Version="2.1.11" />
+		<PackageReference Include="ElevenLabs-DotNet" Version="1.1.1" />
 		<PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.26.0" />
 		<PackageReference Include="NAudio" Version="2.1.0" />
 		<PackageReference Include="Standart.Hash.xxHash" Version="4.0.5" />
