@@ -5,6 +5,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using TextToTalk.Backends;
 using TextToTalk.Backends.Azure;
+using TextToTalk.Backends.ElevenLabs;
 using TextToTalk.Backends.Polly;
 using TextToTalk.Backends.System;
 using TextToTalk.Backends.Uberduck;
@@ -219,6 +220,20 @@ public class VoicePresetConfiguration
                 Volume = Convert.ToSingle(GetNullableValue<double?>(corrupted, "Volume")),
                 VoiceName = GetNullableValue<string?>(corrupted, "VoiceName"),
                 EnabledBackend = TTSBackend.Azure,
+            },
+            TTSBackend.ElevenLabs => new ElevenLabsVoicePreset
+            {
+                Id = Convert.ToInt32(GetNullableValue<long?>(corrupted, "Id")),
+                Name = GetNullableValue<string?>(corrupted, "Name"),
+                PlaybackRate = Convert.ToInt32(GetNullableValue<long?>(corrupted, "PlaybackRate")),
+                Volume = Convert.ToSingle(GetNullableValue<double?>(corrupted, "Volume")),
+                VoiceName = GetNullableValue<string?>(corrupted, "VoiceName"),
+                EnabledBackend = TTSBackend.ElevenLabs,
+                VoiceId = GetNullableValue<string?>(corrupted, "VoiceId"),
+                Stability = Convert.ToDouble(GetNullableValue<double?>(corrupted, "Stability")),
+                SimilarityBoost = Convert.ToDouble(GetNullableValue<double?>(corrupted, "SimilarityBoost")),
+                CharacterOverride = GetNullableValue<bool>(corrupted, "CharacterOverride"),
+                MessageBuffer = Convert.ToInt32(GetNullableValue<long?>(corrupted, "MessageBuffer")),
             },
             _ => throw new ArgumentOutOfRangeException($"{backendCorrupt}"),
         };

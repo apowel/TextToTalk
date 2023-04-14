@@ -81,7 +81,7 @@ public class ElevenLabsBackend : VoiceBackend
             }
         });
     }
-    //miqo'te friendly name getter
+    //miqo'te friendly name getter. Checks for speaker's name in available ElevenLabs voices.
     private ElevenLabsVoice? GetVoiceByName(string voiceName)
     {
         var regex = new Regex("[^a-zA-Z0-9]+");

@@ -48,6 +48,7 @@ public class ElevenLabsBackendUI
         if (ImGui.Button($"Save ApiKey##{MemoizedId.Create()}"))
         {
             var username = Whitespace.Replace(this.apiKey, "");
+            //just need to save apikey and credentials want two values.
             var password = "poop";
             ElevenLabsCredentialManager.SaveCredentials(username, password);
             this.ElevenLabs.ApiKey = username;
@@ -172,7 +173,13 @@ public class ElevenLabsBackendUI
             currentVoicePreset.SimilarityBoost = Math.Round((double)similarity / 100, 2);
             this.config.Save();
         }
-
+        var messageBuffer = currentVoicePreset.MessageBuffer;
+        if (ImGui.SliderInt($"Message buffer length##{MemoizedId.Create()}", ref messageBuffer, 5, 100))
+        {
+            currentVoicePreset.MessageBuffer = messageBuffer;
+            this.config.Save();
+        }
+        ImGui.TextColored(BackendUI.HintColor, "The buffer sets the sensitivity for splitting long messages in order to reduce initial tts lag.");
         ImGui.Text("Lexicons");
         ImGui.TextColored(BackendUI.HintColor, "Lexicons are not supported on the ElevenLabs backend.");
         ImGui.Spacing();

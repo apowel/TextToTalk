@@ -5,12 +5,13 @@ namespace TextToTalk.Backends.ElevenLabs;
 public class ElevenLabsVoicePreset : VoicePreset
 {
     [JsonProperty("ElevenLabsVolume")] public float Volume { get; set; }
-    [JsonProperty("stability")] public double Stability { get; set; }
-    [JsonProperty("similarity_boost")] public double SimilarityBoost { get; set; }
+    [JsonProperty("stability")] public double? Stability { get; set; }
+    [JsonProperty("similarity_boost")] public double? SimilarityBoost { get; set; }
     [JsonProperty("name")] public string? VoiceName { get; set; }
     [JsonProperty("voice_id")] public string? VoiceId { get; set; }
     public int PlaybackRate { get; set; }
     public bool CharacterOverride { get; set; }
+    public int MessageBuffer { get; set; }
 
     public override bool TrySetDefaultValues()
     {
@@ -20,6 +21,7 @@ public class ElevenLabsVoicePreset : VoicePreset
         PlaybackRate = 100;
         EnabledBackend = TTSBackend.ElevenLabs;
         CharacterOverride = true;
+        MessageBuffer = 20;
         return true;
     }
 }

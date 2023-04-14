@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.CognitiveServices.Speech;
 using NAudio.Wave;
@@ -20,11 +21,12 @@ public class ElevenLabsHttpClient : IDisposable
     private readonly StreamSoundQueue _soundQueue;
     public string ApiKey { private get; set; }
     public string ApiSecret { private get; set; }
+
     public ElevenLabsHttpClient(StreamSoundQueue soundQueue, HttpClient http)
     {
         _client = new HttpClient();
         _client.BaseAddress = new Uri("https://api.elevenlabs.io/v1/");
-        
+
         _soundQueue = soundQueue;
     }
 
@@ -63,36 +65,81 @@ public class ElevenLabsHttpClient : IDisposable
         {
             return null;
         }
+
         throw new Exception($"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");
     }
+
     public async Task Say(ElevenLabsVoicePreset preset, string text, TextSource source, string? voiceOverride)
     {
-        
-        var requestUrl = $"{BaseUrl}text-to-speech/{voiceOverride??preset.VoiceId}/stream";
-        var requestBody = new
+        //try to split long bits of text into two parts to get the first bit of audio quicker and have the playing of the audio act as a buffer.
+        string[] splitText = SeparateFirstSentence(text, preset.MessageBuffer);
+        for (int i = 0; i < splitText.Length; i++)
         {
-            text,
-            voice_settings = new
+            if (string.IsNullOrWhiteSpace(splitText[i]))
             {
-                stability = preset.Stability,
-                similarity_boost = preset.SimilarityBoost
+                return;
             }
-        };
+            var requestUrl = $"{BaseUrl}text-to-speech/{voiceOverride ?? preset.VoiceId}/stream";
+            var requestBody = new
+            {
+                text = splitText[i],
+                voice_settings = new
+                {
+                    stability = preset.Stability,
+                    similarity_boost = preset.SimilarityBoost
+                }
+            };
 
-        var content = new StringContent(JsonConvert.SerializeObject(requestBody), Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(requestUrl, content);
-        
-        if (response.IsSuccessStatusCode)
+            var content = new StringContent(JsonConvert.SerializeObject(requestBody), Encoding.UTF8,
+                "application/json");
+            var response = await _client.PostAsync(requestUrl, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var audio = new MemoryStream();
+                await response.Content.CopyToAsync(audio);
+                audio.Position = 0;
+                _soundQueue.EnqueueSound(audio, source, StreamFormat.Mp3, preset.Volume);
+            }
+            else
+            {
+                throw new Exception(
+                    $"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");
+            }
+        }
+    }
+
+    private string[] SeparateFirstSentence(string paragraph, int buffer)
+    {
+        string firstPart;
+        string restOfParagraph;
+        string pattern = @"^(.*?[\.!?])(?:\s|$)";
+        Match match = Regex.Match(paragraph, pattern);
+
+        if (match.Success)
         {
-            var audio = new MemoryStream();
-            await response.Content.CopyToAsync(audio);
-            audio.Position = 0;
-            _soundQueue.EnqueueSound(audio, source, StreamFormat.Mp3, preset.Volume);
-            return;
+            firstPart = match.Value.Trim();
+            restOfParagraph = paragraph.Substring(match.Length).Trim();
+
+            if (firstPart.Length < buffer)
+            {
+                match = Regex.Match(restOfParagraph, pattern);
+
+                if (match.Success)
+                {
+                    firstPart += " " + match.Value.Trim();
+                    restOfParagraph = restOfParagraph.Substring(match.Length).Trim();
+                }
+            }
+        }
+        else
+        {
+            return new[] { paragraph };
         }
 
-        throw new Exception($"API request failed with status code {response.StatusCode}: {response.ReasonPhrase}");
+        return new[] { firstPart, restOfParagraph };
     }
+
     public Task CancelAllSounds()
     {
         _soundQueue.CancelAllSounds();
@@ -120,7 +167,8 @@ public class ElevenLabsHttpClient : IDisposable
             var cancellation = SpeechSynthesisCancellationDetails.FromResult(res);
             if (cancellation.Reason == CancellationReason.Error)
             {
-                DetailedLog.Error($"ElevenLabs request error: ({cancellation.ErrorCode}) \"{cancellation.ErrorDetails}\"");
+                DetailedLog.Error(
+                    $"ElevenLabs request error: ({cancellation.ErrorCode}) \"{cancellation.ErrorDetails}\"");
             }
             else
             {
