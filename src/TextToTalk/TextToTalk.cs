@@ -8,6 +8,7 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reactive.Concurrency;
@@ -18,6 +19,7 @@ using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
+using LiteDB;
 using Standart.Hash.xxHash;
 using TextToTalk.Backends;
 using TextToTalk.Backends.Azure;
@@ -27,6 +29,7 @@ using TextToTalk.Backends.System;
 using TextToTalk.Backends.Uberduck;
 using TextToTalk.Backends.Websocket;
 using TextToTalk.CommandModules;
+using TextToTalk.Data.Service;
 using TextToTalk.Events;
 using TextToTalk.GameEnums;
 using TextToTalk.Middleware;
@@ -63,6 +66,7 @@ namespace TextToTalk
         private readonly SoundHandler soundHandler;
         private readonly RateLimiter rateLimiter;
         private readonly UngenderedOverrideManager ungenderedOverrides;
+        private readonly ILiteDatabase database;
         private readonly PlayerService playerService;
         private readonly NpcService npcService;
         private readonly WindowSystem windows;
@@ -103,10 +107,15 @@ namespace TextToTalk
             this.chat = chat;
             this.framework = framework;
 
+            CreateDatabasePath();
+            this.database = new LiteDatabase(GetDatabasePath("TextToTalk.db"));
+            var playerCollection = new PlayerCollection(this.database);
+            var npcCollection = new NpcCollection(this.database);
+
             this.windows = new WindowSystem("TextToTalk");
 
             this.config = (PluginConfiguration?)this.pluginInterface.GetPluginConfig() ?? new PluginConfiguration();
-            this.config.Initialize(this.pluginInterface);
+            this.config.Initialize(this.pluginInterface, playerCollection, npcCollection);
 
             this.addonTalkManager = new AddonTalkManager(framework, clientState, condition, gui);
             this.addonBattleTalkManager = new AddonBattleTalkManager(framework, clientState, condition, gui);
@@ -117,10 +126,8 @@ namespace TextToTalk
             this.backendManager = new VoiceBackendManager(this.config, this.http);
             this.handleFailedToBindWsPort = HandleFailedToBindWSPort();
 
-            this.playerService = new PlayerService(this.config.Players, this.config.PlayerVoicePresets,
-                this.config.GetVoiceConfig().VoicePresets);
-            this.npcService = new NpcService(this.config.Npcs, this.config.NpcVoicePresets,
-                this.config.GetVoiceConfig().VoicePresets);
+            this.playerService = new PlayerService(playerCollection, this.config.GetVoiceConfig().VoicePresets);
+            this.npcService = new NpcService(npcCollection, this.config.GetVoiceConfig().VoicePresets);
 
             var unlockerResultWindow = new UnlockerResultWindow();
             var channelPresetModificationWindow = new ChannelPresetModificationWindow(this.config);
@@ -173,6 +180,16 @@ namespace TextToTalk
 
             this.handleTextCancel = HandleTextCancel();
             this.handleTextEmit = HandleTextEmit();
+        }
+
+        private void CreateDatabasePath()
+        {
+            Directory.CreateDirectory(this.pluginInterface.GetPluginConfigDirectory());
+        }
+
+        private string GetDatabasePath(string fileName)
+        {
+            return Path.Combine(this.pluginInterface.GetPluginConfigDirectory(), fileName);
         }
 
         private IDisposable HandleTextCancel()
@@ -309,37 +326,31 @@ namespace TextToTalk
                 return;
             }
 
+            // Some characters have emdashes in their names, which should be treated
+            // as hyphens for the sake of the plugin.
+            var cleanSpeakerName = TalkUtils.NormalizePunctuation(speakerName.TextValue);
+
+            // Get the speaker's voice preset
+            var preset = GetVoicePreset(speaker, cleanSpeakerName);
+
+            // Say the thing
+            BackendSay(source, preset, cleanSpeakerName, cleanText);
+        }
+
+        private VoicePreset? GetVoicePreset(GameObject? speaker, string speakerName)
+        {
             // Check if the speaker is a player and we have a custom voice for this speaker
             if (speaker is PlayerCharacter pc &&
-                this.playerService.TryGetPlayerByInfo(speakerName.TextValue, pc.HomeWorld.Id, out var playerInfo) &&
+                this.playerService.TryGetPlayer(speakerName, pc.HomeWorld.Id, out var playerInfo) &&
                 this.playerService.TryGetPlayerVoice(playerInfo, out var playerVoice))
             {
-                if (playerVoice.EnabledBackend != this.config.Backend)
-                {
-                    DetailedLog.Error(
-                        $"Voice preset {playerVoice.Name} is not compatible with the {this.config.Backend} backend");
-                }
-                else
-                {
-                    this.backendManager.Say(source, playerVoice, pc.Name.TextValue, cleanText);
-                }
+                return playerVoice;
             }
             else if (speaker is not null &&
-                     // Some characters have emdashes in their names, which should be treated
-                     // as hyphens for the sake of the plugin.
-                     this.npcService.TryGetNpcByInfo(TalkUtils.NormalizePunctuation(speakerName.TextValue),
-                         out var npcInfo) &&
+                     this.npcService.TryGetNpc(speakerName, out var npcInfo) &&
                      this.npcService.TryGetNpcVoice(npcInfo, out var npcVoice))
             {
-                if (this.config.Backend != TTSBackend.Websocket && npcVoice.EnabledBackend != this.config.Backend)
-                {
-                    DetailedLog.Error(
-                        $"Voice preset {npcVoice.Name} is not compatible with the {this.config.Backend} backend");
-                }
-                else
-                {
-                    this.backendManager.Say(source, npcVoice, speaker.Name.TextValue, cleanText);
-                }
+                return npcVoice;
             }
             else
             {
@@ -348,16 +359,26 @@ namespace TextToTalk
                     ? CharacterGenderUtils.GetCharacterGender(speaker, this.ungenderedOverrides)
                     : Gender.None;
 
-                // Say the thing
-                var preset = GetVoiceForSpeaker(speakerName.TextValue, gender);
-                if (preset != null)
-                {
-                    this.backendManager.Say(source, preset, speakerName.TextValue ?? "", cleanText);
-                }
-                else
-                {
-                    DetailedLog.Error("Attempted to speak with null voice preset");
-                }
+                return GetVoiceForSpeaker(speakerName, gender);
+            }
+        }
+
+        private void BackendSay(TextSource source, VoicePreset? voicePreset, string speaker, string text)
+        {
+            if (voicePreset is null)
+            {
+                DetailedLog.Error("Attempted to speak with null voice preset");
+                return;
+            }
+
+            if (voicePreset.EnabledBackend != this.config.Backend)
+            {
+                DetailedLog.Error(
+                    $"Voice preset {voicePreset.Name} is not compatible with the {this.config.Backend} backend");
+            }
+            else
+            {
+                this.backendManager.Say(source, voicePreset, speaker, text);
             }
         }
 
@@ -554,6 +575,8 @@ namespace TextToTalk
 
             this.backendManager.Dispose();
             this.http.Dispose();
+
+            this.database.Dispose();
 
             this.addonBattleTalkManager.Dispose();
             this.addonTalkManager.Dispose();

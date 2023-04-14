@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFramework>net7.0-windows</TargetFramework>
 		<LangVersion>11.0</LangVersion>
-		<Version>1.24.2.0</Version>
+		<Version>1.25.0.0</Version>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<ProduceReferenceAssembly>false</ProduceReferenceAssembly>
@@ -47,6 +47,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\TextToTalk.Data\TextToTalk.Data.csproj" />
 		<ProjectReference Include="..\TextToTalk.Lexicons.Updater\TextToTalk.Lexicons.Updater.csproj" />
 		<ProjectReference Include="..\TextToTalk.Lexicons\TextToTalk.Lexicons.csproj" />
 		<ProjectReference Include="..\TextToTalk.UI.SourceGeneration\TextToTalk.UI.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

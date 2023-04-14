@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using TextToTalk.Backends;
 using TextToTalk.Backends.System;
+using TextToTalk.Data.Service;
 using TextToTalk.Migrations;
 using TextToTalk.UI.Core;
 
@@ -35,6 +36,7 @@ namespace TextToTalk
         // ReSharper disable once CollectionNeverUpdated.Global
         public IList<int> EnabledChatTypes { get; set; }
 
+        // ReSharper disable once CollectionNeverUpdated.Global
         [Obsolete] public IList<VoicePreset> VoicePresets { get; set; }
 
         [Obsolete("Use VoicePresets.")] public int Rate { get; set; }
@@ -86,6 +88,18 @@ namespace TextToTalk
         [Obsolete] public int MaleVoicePresetId { get; set; }
         [Obsolete] public int FemaleVoicePresetId { get; set; }
 
+        // ReSharper disable once CollectionNeverUpdated.Global
+        [Obsolete] public IDictionary<Guid, dynamic> Players { get; set; }
+
+        // ReSharper disable once CollectionNeverUpdated.Global
+        [Obsolete] public IDictionary<Guid, dynamic> Npcs { get; set; }
+
+        // ReSharper disable once CollectionNeverUpdated.Global
+        [Obsolete] public IDictionary<Guid, int> PlayerVoicePresets { get; set; }
+
+        // ReSharper disable once CollectionNeverUpdated.Global
+        [Obsolete] public IDictionary<Guid, int> NpcVoicePresets { get; set; }
+
         #endregion
 
         public int Version { get; set; }
@@ -101,6 +115,7 @@ namespace TextToTalk
         public bool MigratedTo1_17 { get; set; }
         public bool MigratedTo1_18_2 { get; set; }
         public bool MigratedTo1_18_3 { get; set; }
+        public bool MigratedTo1_25_0 { get; set; }
 
         public IList<Trigger> Bad { get; set; }
         public IList<Trigger> Good { get; set; }
@@ -114,7 +129,7 @@ namespace TextToTalk
         public bool EnableNameWithSay { get; set; } = true;
         public bool DisallowMultipleSay { get; set; }
         public bool SayPlayerWorldName { get; set; } = true;
-        public bool SayPartialName { get; set; } = false;
+        public bool SayPartialName { get; set; }
         public FirstOrLastName OnlySayFirstOrLastName { get; set; } = FirstOrLastName.First;
 
         public bool ReadFromQuestTalkAddon { get; set; } = true;
@@ -144,12 +159,6 @@ namespace TextToTalk
 
         public bool SkipMessagesFromYou { get; set; }
 
-        public IDictionary<Guid, PlayerInfo> Players { get; set; }
-        public IDictionary<Guid, int> PlayerVoicePresets { get; set; }
-
-        public IDictionary<Guid, NpcInfo> Npcs { get; set; }
-        public IDictionary<Guid, int> NpcVoicePresets { get; set; }
-
         [JsonIgnore]
         public bool InitializedEver
         {
@@ -176,7 +185,10 @@ namespace TextToTalk
             MajorKey = VirtualKey.Enum.VkN;
         }
 
-        public void Initialize(DalamudPluginInterface pi)
+        public void Initialize(
+            DalamudPluginInterface pi,
+            PlayerCollection playerCollection,
+            NpcCollection npcCollection)
         {
             this.pluginInterface = pi;
             this.cfgLock = true;
@@ -191,10 +203,9 @@ namespace TextToTalk
 
             RemoteLexiconEnabledBackends ??= new Dictionary<string, IDictionary<TTSBackend, bool>>();
 
-            Players ??= new Dictionary<Guid, PlayerInfo>();
             PlayerVoicePresets ??= new Dictionary<Guid, int>();
 
-            Npcs ??= new Dictionary<Guid, NpcInfo>();
+            Npcs ??= new Dictionary<Guid, dynamic>();
             NpcVoicePresets ??= new Dictionary<Guid, int>();
 
             if (!InitializedEver)
@@ -245,6 +256,7 @@ namespace TextToTalk
                 MigratedTo1_17 = true;
                 MigratedTo1_18_2 = true;
                 MigratedTo1_18_3 = true;
+                MigratedTo1_25_0 = true;
             }
 
             if (InitializedEver)
@@ -252,7 +264,7 @@ namespace TextToTalk
                 var migrations = new IConfigurationMigration[]
                 {
                     new Migration1_5(), new Migration1_6(), new Migration1_17(), new Migration1_18_2(),
-                    new Migration1_18_3()
+                    new Migration1_18_3(), new Migration1_25_0(playerCollection, npcCollection),
                 };
                 foreach (var migration in migrations)
                 {
